@@ -1,0 +1,22 @@
+{
+  "name": "spa-frontend",
+  "version": "1.0.0",
+  "description": "Frontend Spa untuk UI donatur dan pengurus.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "@vitejs/plugin-react": "^4.5.0",
+    "axios": "^1.9.0",
+    "lucide-react": "^0.511.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^6.3.5",
+    "tailwindcss": "^4.1.8"
+  },
+  "devDependencies": {}
+}

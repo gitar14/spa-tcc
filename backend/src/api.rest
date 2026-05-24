@@ -1,0 +1,56 @@
+@baseUrl = http://localhost:8080/api
+
+GET {{baseUrl}}/health
+
+###
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "name": "Alya Customer",
+  "email": "alya@example.com",
+  "role": "Customer"
+}
+
+###
+POST {{baseUrl}}/therapists
+Content-Type: application/json
+
+{
+  "name": "Mira",
+  "specialization": "Aromatherapy Massage"
+}
+
+###
+POST {{baseUrl}}/services
+Content-Type: application/json
+
+{
+  "name": "Signature Glow Facial",
+  "duration_minutes": 60,
+  "price": 225000
+}
+
+###
+POST {{baseUrl}}/rooms
+Content-Type: application/json
+
+{
+  "room_number": "A-01",
+  "type": "Spa"
+}
+
+###
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "therapist_id": 1,
+  "service_id": 1,
+  "room_id": 1,
+  "booking_time": "2026-05-23T11:00:00.000Z"
+}
+
+###
+GET {{baseUrl}}/bookings/queue

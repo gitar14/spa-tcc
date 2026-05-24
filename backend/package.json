@@ -1,0 +1,29 @@
+{
+  "name": "spa-backend",
+  "version": "1.0.0",
+  "description": "REST API Spa untuk manajemen spa dan salon dengan PostgreSQL, Firestore, dan Cloud Storage.",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "spa",
+    "salon",
+    "cloud-computing"
+  ],
+  "author": "Spa Team",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/storage": "^7.16.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.20.0",
+    "firebase-admin": "^13.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
+  }
+}
