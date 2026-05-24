@@ -1,7 +1,15 @@
-runtime: nodejs18
+runtime: nodejs20
+
 handlers:
   - url: /assets
     static_dir: dist/assets
+    secure: always
+
   - url: /.*
     static_files: dist/index.html
     upload: dist/index.html
+    secure: always
+
+env_variables:
+  VITE_API_URL: "https://spa-backend-GANTI_NANTI.a.run.app/api"
+
