@@ -28,11 +28,13 @@ steps:
       - '--set-env-vars=DB_HOST=136.111.178.140,DB_PORT=5432,DB_NAME=spa_db,DB_USER=spa_user,DB_PASSWORD=SpaSecure2024!,JWT_SECRET=spa_jwt_secret_key_production_2024,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,BUCKET_THERAPIST_PHOTOS=spa-tcc-therapist-photos-d30,BUCKET_PAYMENT_PROOFS=spa-tcc-payment-proofs-d30'
 
   # Build frontend
-  - name: 'gcr.io/cloud-builders/npm'
+  - name: 'node:20'
+    entrypoint: 'npm'
     args: ['install']
     dir: 'frontend'
 
-  - name: 'gcr.io/cloud-builders/npm'
+  - name: 'node:20'
+    entrypoint: 'npm'
     args: ['run', 'build']
     dir: 'frontend'
 
