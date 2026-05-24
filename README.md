@@ -1,6 +1,6 @@
 # Spa Project
 
-Spa Project memakai struktur monorepo sederhana untuk aplikasi donasi dan pengelolaan transparansi.
+Spa Project memakai struktur monorepo sederhana untuk aplikasi Sistem pemesanan jam perawatan kecantikan dengan pilihan terapis.
 
 ## Stack
 
