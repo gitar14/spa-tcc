@@ -1,22 +1,33 @@
 steps:
+  # Build backend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/spa-backend', './backend']
+    args: 
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
+      - './backend'
 
+  # Push backend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/spa-backend']
+    args: 
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
 
+  # Deploy backend to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
       - 'run'
       - 'deploy'
       - 'spa-backend'
-      - '--image=gcr.io/$PROJECT_ID/spa-backend'
-      - '--region=asia-southeast1'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
+      - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'
+      - '--set-env-vars=DB_HOST=136.111.178.140,DB_PORT=5432,DB_NAME=spa_db,DB_USER=spa_user,DB_PASSWORD=SpaSecure2024!,JWT_SECRET=spa_jwt_secret_key_production_2024,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,BUCKET_THERAPIST_PHOTOS=spa-tcc-therapist-photos-d30,BUCKET_PAYMENT_PROOFS=spa-tcc-payment-proofs-d30,PORT=8080'
 
+  # Build frontend
   - name: 'gcr.io/cloud-builders/npm'
     args: ['install']
     dir: 'frontend'
@@ -25,9 +36,13 @@ steps:
     args: ['run', 'build']
     dir: 'frontend'
 
+  # Deploy frontend to App Engine
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: ['app', 'deploy', 'frontend/app.yaml', '--quiet']
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
