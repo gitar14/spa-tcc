@@ -1,4 +1,4 @@
-const { Booking, User, Therapist, Service, Room } = require('../models');
+const { Booking, User, Therapist, Service, Room } = require('../schema');
 const { updateTherapistStatus, addToQueue, removeFromQueue } = require('../services/firestoreService');
 
 // Get all bookings
