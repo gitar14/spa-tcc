@@ -13,7 +13,7 @@ async function updateTherapistStatus(therapistId, status) {
   try {
     await therapistStatusCollection.doc(String(therapistId)).set({
       therapist_id: therapistId,
-      status: status, // 'available' or 'busy'
+      status: status,
       updated_at: Firestore.Timestamp.now()
     }, { merge: true });
     
