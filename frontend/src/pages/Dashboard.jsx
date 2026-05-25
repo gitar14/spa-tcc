@@ -11,7 +11,7 @@ import {
   Star,
   UserRoundCheck
 } from 'lucide-react';
-import { api } from '../lib/api';
+import api from '../lib/api';
 
 const defaultServices = [
   { id: 1, name: 'Signature Glow Facial', duration_minutes: 60, price: 225000 },
