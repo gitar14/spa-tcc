@@ -1,74 +1,102 @@
-const { firestore } = require('../config/firestore');
+const { Firestore } = require('@google-cloud/firestore');
 
-class FirestoreService {
-  async updateTherapistStatus(therapistId, status, bookingId = null) {
-    const docRef = firestore.collection('therapist_status').doc(therapistId.toString());
-    
-    await docRef.set({
+const firestore = new Firestore({
+  projectId: process.env.GOOGLE_CLOUD_PROJECT || 'd-30-488909'
+});
+
+// Collection references
+const therapistStatusCollection = firestore.collection('therapist_status');
+const activeQueueCollection = firestore.collection('active_queue');
+
+// Update therapist status
+async function updateTherapistStatus(therapistId, status) {
+  try {
+    await therapistStatusCollection.doc(String(therapistId)).set({
       therapist_id: therapistId,
-      current_status: status,
-      current_booking_id: bookingId,
-      estimated_available: status === 'Busy' && bookingId ? 
-        new Date(Date.now() + 90 * 60 * 1000) : null,
-      updated_at: new Date()
-    });
-  }
-
-  async getAvailableSlots(date, therapistId) {
-    const docRef = firestore.collection('available_slots')
-      .doc(`${date}_${therapistId}`);
+      status: status, // 'available' or 'busy'
+      updated_at: Firestore.Timestamp.now()
+    }, { merge: true });
     
-    const doc = await docRef.get();
-    
-    if (doc.exists) {
-      const data = doc.data();
-      const cacheAge = Date.now() - data.updated_at.toMillis();
-      if (cacheAge < 5 * 60 * 1000) {
-        return data.slots;
-      }
-    }
-    
-    return null;
-  }
-
-  async setAvailableSlots(date, therapistId, slots) {
-    const docRef = firestore.collection('available_slots')
-      .doc(`${date}_${therapistId}`);
-    
-    await docRef.set({
-      date,
-      therapist_id: therapistId,
-      slots,
-      updated_at: new Date()
-    });
-  }
-
-  async sendNotification(userId, type, message) {
-    await firestore.collection('notifications').add({
-      user_id: userId,
-      type,
-      message,
-      read: false,
-      created_at: new Date()
-    });
-  }
-
-  async addToQueue(bookingId, customerName, therapistName, estimatedFinish) {
-    await firestore.collection('active_queue').doc(bookingId.toString()).set({
-      booking_id: bookingId,
-      customer_name: customerName,
-      therapist_name: therapistName,
-      status: 'In_Progress',
-      estimated_finish: estimatedFinish,
-      created_at: new Date()
-    });
-  }
-
-  async removeFromQueue(bookingId) {
-    await firestore.collection('active_queue')
-      .doc(bookingId.toString())
-      .delete();
+    console.log(`Firestore: Therapist ${therapistId} status updated to ${status}`);
+  } catch (error) {
+    console.error('Firestore updateTherapistStatus error:', error);
+    throw error;
   }
 }
 
-module.exports = new FirestoreService();
+// Add booking to active queue
+async function addToQueue(queueItem) {
+  try {
+    const docRef = activeQueueCollection.doc(String(queueItem.booking_id));
+    await docRef.set({
+      ...queueItem,
+      created_at: Firestore.Timestamp.now()
+    });
+    
+    console.log(`Firestore: Added booking ${queueItem.booking_id} to queue`);
+  } catch (error) {
+    console.error('Firestore addToQueue error:', error);
+    throw error;
+  }
+}
+
+// Remove booking from active queue
+async function removeFromQueue(bookingId) {
+  try {
+    await activeQueueCollection.doc(String(bookingId)).delete();
+    console.log(`Firestore: Removed booking ${bookingId} from queue`);
+  } catch (error) {
+    console.error('Firestore removeFromQueue error:', error);
+    throw error;
+  }
+}
+
+// Get active queue
+async function getActiveQueue() {
+  try {
+    const snapshot = await activeQueueCollection.orderBy('created_at', 'desc').get();
+    
+    if (snapshot.empty) {
+      return [];
+    }
+
+    const queue = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      queue.push({
+        id: doc.id,
+        ...data,
+        created_at: data.created_at?.toDate().toISOString()
+      });
+    });
+
+    return queue;
+  } catch (error) {
+    console.error('Firestore getActiveQueue error:', error);
+    return [];
+  }
+}
+
+// Get therapist status
+async function getTherapistStatus(therapistId) {
+  try {
+    const doc = await therapistStatusCollection.doc(String(therapistId)).get();
+    
+    if (!doc.exists) {
+      return { status: 'available' };
+    }
+
+    return doc.data();
+  } catch (error) {
+    console.error('Firestore getTherapistStatus error:', error);
+    return { status: 'available' };
+  }
+}
+
+module.exports = {
+  updateTherapistStatus,
+  addToQueue,
+  removeFromQueue,
+  getActiveQueue,
+  getTherapistStatus
+};
