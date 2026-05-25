@@ -37,7 +37,7 @@ exports.createBooking = async (req, res) => {
       service_id,
       room_id,
       booking_time,
-      status: 'Confirmed'
+      status: 'Pending'
     });
 
     // Get booking with relations
