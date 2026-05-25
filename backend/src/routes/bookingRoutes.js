@@ -3,15 +3,15 @@ const bookingController = require('../controllers/bookingController');
 
 const router = express.Router();
 
+// Queue endpoint
 router.get('/queue', bookingController.getQueue);
-router.get('/slots/check', bookingController.getAvailableSlot);
-router.get('/notifications/:userId', bookingController.getNotifications);
-router.get('/preferences/:userId', bookingController.getPreference);
-router.put('/:id/finish', bookingController.finish);
-router.get('/', bookingController.getAll);
-router.get('/:id', bookingController.getById);
-router.post('/', bookingController.create);
-router.put('/:id', bookingController.update);
-router.delete('/:id', bookingController.remove);
+
+// CRUD endpoints
+router.get('/', bookingController.getAllBookings);
+router.get('/:id', bookingController.getBookingById);
+router.post('/', bookingController.createBooking);
+router.put('/:id', bookingController.updateBooking);
+router.put('/:id/finish', bookingController.finishBooking);
+router.delete('/:id', bookingController.deleteBooking);
 
 module.exports = router;
