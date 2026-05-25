@@ -105,10 +105,9 @@ export default function Dashboard() {
       if (therapistRes.data.length > 0) setTherapists(therapistRes.data);
       setRooms(roomRes.data);
       
-      // Fetch today bookings
       await fetchTodayBookings();
       
-      setMessage('Data SQL dan Redis berhasil diperbarui.');
+      setMessage('Data SQL dan Firestore berhasil diperbarui.');
     } catch (error) {
       setMessage('Mode demo aktif. Isi master data atau nyalakan backend untuk data live.');
     } finally {
@@ -265,7 +264,6 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-5">
-          {/* Live Queue Firestore */}
           <div className="grid gap-5 xl:grid-cols-2">
             <Panel title="Live Queue Firestore" icon={<Clock3 size={20} className="text-rose-700" />}>
               {queue.length === 0 ? (
@@ -298,7 +296,6 @@ export default function Dashboard() {
             </Panel>
           </div>
 
-          {/* Jadwal Booking Hari Ini - NEW SECTION */}
           <Panel title="Jadwal Booking Hari Ini" icon={<CalendarDays size={20} className="text-teal-700" />}>
             {todayBookings.length === 0 ? (
               <p className="rounded-md bg-slate-50 p-4 text-center text-sm text-slate-500">
@@ -376,7 +373,6 @@ export default function Dashboard() {
             )}
           </Panel>
 
-          {/* Jadwal Ruangan Spa SQL - All Bookings */}
           <Panel title="Semua Booking (SQL)" icon={<CalendarDays size={20} className="text-slate-700" />}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] border-collapse text-left text-sm">
