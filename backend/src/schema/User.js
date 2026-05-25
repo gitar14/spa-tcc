@@ -2,12 +2,35 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const UserSchema = sequelize.define('User', {
-  name: { type: DataTypes.STRING(100), allowNull: false },
-  email: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  },
+  phone: {                    // ← TAMBAH INI
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   role: {
-    type: DataTypes.ENUM('Receptionist', 'Customer'),
-    defaultValue: 'Customer'
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
-}, { tableName: 'users', timestamps: false });
+}, {
+  tableName: 'users',
+  timestamps: false
+});
 
 module.exports = UserSchema;

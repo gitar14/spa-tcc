@@ -13,6 +13,7 @@ const router = express.Router();
 router.get('/health', (req, res) => {
   res.status(200).json({ service: 'spa-backend', status: 'ok' });
 });
+
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/therapists', therapistRoutes);

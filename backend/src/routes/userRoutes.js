@@ -1,4 +1,9 @@
-const buildCrudRoutes = require('./crudRoutesFactory');
-const userController = require('../controllers/userController');
+const express = require('express');
+const paymentController = require('../controllers/paymentController');
 
-module.exports = buildCrudRoutes(userController);
+const router = express.Router();
+
+// Get user's bookings
+router.get('/:userId/bookings', paymentController.getUserBookings);
+
+module.exports = router;

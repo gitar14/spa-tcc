@@ -212,7 +212,7 @@ export default function Dashboard() {
 
       <section className="mx-auto grid max-w-7xl gap-5 px-5 pb-8 lg:grid-cols-[360px_1fr]">
         <div className="space-y-5">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          {/* <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <HeartHandshake className="text-teal-700" size={22} />
               <h2 className="text-lg font-black text-slate-950">Booking Pelanggan</h2>
@@ -270,7 +270,7 @@ export default function Dashboard() {
             <div className="mt-4 rounded-md bg-teal-50 p-3 text-sm text-teal-900">
               {message}
             </div>
-          </div>
+          </div> */}
 
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-lg font-black text-slate-950">Mobile Client Preview</h2>

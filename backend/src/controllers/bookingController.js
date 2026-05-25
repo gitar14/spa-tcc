@@ -20,61 +20,59 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-// Create new booking with Firestore sync
+// Create new booking with auto-create user
 exports.createBooking = async (req, res) => {
   try {
-    const { user_id, therapist_id, service_id, room_id, booking_time } = req.body;
+    const { name, phone, therapist_id, service_id, room_id, booking_time } = req.body;
 
     // Validate required fields
-    if (!user_id || !therapist_id || !service_id || !room_id || !booking_time) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!name || !phone || !therapist_id || !service_id || !room_id || !booking_time) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['name', 'phone', 'therapist_id', 'service_id', 'room_id', 'booking_time']
+      });
     }
 
-    // Create booking in PostgreSQL
+    // Find or create user by phone
+    let user = await User.findOne({ where: { phone } });
+    
+    if (!user) {
+      // Create new user
+      user = await User.create({
+        name: name,
+        email: `${phone}@customer.spa`,
+        phone: phone,
+        role: 'Customer',
+        password: 'customer123'
+      });
+      console.log(`✅ New user created: ${user.name} (ID: ${user.id})`);
+    } else {
+      console.log(`✅ Existing user found: ${user.name} (ID: ${user.id})`);
+    }
+
+    // Create booking
     const booking = await Booking.create({
-      user_id,
+      user_id: user.id,
       therapist_id,
       service_id,
       room_id,
-      booking_time,
+      booking_time: new Date(booking_time),
       status: 'Pending'
     });
 
-    // Get booking with relations
-    const bookingWithDetails = await Booking.findByPk(booking.id, {
+    // Fetch with relations
+    const bookingWithData = await Booking.findByPk(booking.id, {
       include: [
-        { model: User, attributes: ['id', 'name'] },
+        { model: User, attributes: ['id', 'name', 'phone'] },
         { model: Therapist, attributes: ['id', 'name'] },
-        { model: Service, attributes: ['id', 'name'] },
+        { model: Service, attributes: ['id', 'name', 'price'] },
         { model: Room, attributes: ['id', 'room_number'] }
       ]
     });
 
-    // Update Firestore: set therapist as busy
-    try {
-      await updateTherapistStatus(therapist_id, 'busy');
-      
-      // Add to active queue in Firestore
-      await addToQueue({
-        booking_id: booking.id,
-        therapist_id,
-        therapist_name: bookingWithDetails.Therapist.name,
-        user_name: bookingWithDetails.User.name,
-        service_name: bookingWithDetails.Service.name,
-        room_number: bookingWithDetails.Room.room_number,
-        status: 'In Progress',
-        created_at: new Date().toISOString()
-      });
-
-      console.log(`✅ Firestore updated: Therapist ${therapist_id} set to busy, added to queue`);
-    } catch (firestoreError) {
-      console.error('⚠️ Firestore sync failed (booking still created in PostgreSQL):', firestoreError);
-      // Don't fail the whole request if Firestore fails
-    }
-
-    res.status(201).json(bookingWithDetails);
+    res.status(201).json(bookingWithData);
   } catch (error) {
-    console.error('Error creating booking:', error);
+    console.error('❌ Error creating booking:', error);
     res.status(500).json({ error: 'Failed to create booking' });
   }
 };
