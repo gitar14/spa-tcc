@@ -20,16 +20,20 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-// Create new booking with auto-create user
+/// Create new booking with auto-create user
 exports.createBooking = async (req, res) => {
   try {
     const { name, phone, therapist_id, service_id, room_id, booking_time } = req.body;
 
+    console.log('📥 Received booking request:', { name, phone, therapist_id, service_id, room_id, booking_time });
+
     // Validate required fields
     if (!name || !phone || !therapist_id || !service_id || !room_id || !booking_time) {
+      console.log('❌ Missing fields:', { name, phone, therapist_id, service_id, room_id, booking_time });
       return res.status(400).json({ 
         error: 'Missing required fields',
-        required: ['name', 'phone', 'therapist_id', 'service_id', 'room_id', 'booking_time']
+        required: ['name', 'phone', 'therapist_id', 'service_id', 'room_id', 'booking_time'],
+        received: { name, phone, therapist_id, service_id, room_id, booking_time }
       });
     }
 
@@ -60,6 +64,8 @@ exports.createBooking = async (req, res) => {
       status: 'Pending'
     });
 
+    console.log(`✅ Booking created: #${booking.id}`);
+
     // Fetch with relations
     const bookingWithData = await Booking.findByPk(booking.id, {
       include: [
@@ -73,7 +79,7 @@ exports.createBooking = async (req, res) => {
     res.status(201).json(bookingWithData);
   } catch (error) {
     console.error('❌ Error creating booking:', error);
-    res.status(500).json({ error: 'Failed to create booking' });
+    res.status(500).json({ error: 'Failed to create booking', details: error.message });
   }
 };
 
