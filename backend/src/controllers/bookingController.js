@@ -20,38 +20,31 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-/// Create new booking with auto-create user
+// Create booking with name & phone (auto-create user)
 exports.createBooking = async (req, res) => {
   try {
     const { name, phone, therapist_id, service_id, room_id, booking_time } = req.body;
 
-    console.log('📥 Received booking request:', { name, phone, therapist_id, service_id, room_id, booking_time });
+    console.log('📥 CREATE BOOKING:', { name, phone, therapist_id, service_id, room_id, booking_time });
 
-    // Validate required fields
     if (!name || !phone || !therapist_id || !service_id || !room_id || !booking_time) {
-      console.log('❌ Missing fields:', { name, phone, therapist_id, service_id, room_id, booking_time });
-      return res.status(400).json({ 
-        error: 'Missing required fields',
-        required: ['name', 'phone', 'therapist_id', 'service_id', 'room_id', 'booking_time'],
-        received: { name, phone, therapist_id, service_id, room_id, booking_time }
-      });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // Find or create user by phone
     let user = await User.findOne({ where: { phone } });
     
     if (!user) {
-      // Create new user
       user = await User.create({
-        name: name,
+        name,
         email: `${phone}@customer.spa`,
-        phone: phone,
+        phone,
         role: 'Customer',
         password: 'customer123'
       });
-      console.log(`✅ New user created: ${user.name} (ID: ${user.id})`);
+      console.log(`✅ NEW USER: ${user.id}`);
     } else {
-      console.log(`✅ Existing user found: ${user.name} (ID: ${user.id})`);
+      console.log(`✅ EXISTING USER: ${user.id}`);
     }
 
     // Create booking
@@ -64,10 +57,9 @@ exports.createBooking = async (req, res) => {
       status: 'Pending'
     });
 
-    console.log(`✅ Booking created: #${booking.id}`);
+    console.log(`✅ BOOKING: ${booking.id}`);
 
-    // Fetch with relations
-    const bookingWithData = await Booking.findByPk(booking.id, {
+    const result = await Booking.findByPk(booking.id, {
       include: [
         { model: User, attributes: ['id', 'name', 'phone'] },
         { model: Therapist, attributes: ['id', 'name'] },
@@ -76,98 +68,14 @@ exports.createBooking = async (req, res) => {
       ]
     });
 
-    res.status(201).json(bookingWithData);
+    res.status(201).json(result);
   } catch (error) {
-    console.error('❌ Error creating booking:', error);
+    console.error('❌ ERROR:', error);
     res.status(500).json({ error: 'Failed to create booking', details: error.message });
   }
 };
 
-// Finish booking with Firestore sync
-exports.finishBooking = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const booking = await Booking.findByPk(id);
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    // Update booking status in PostgreSQL
-    await booking.update({ status: 'Done' });
-
-    // Update Firestore: set therapist as available
-    try {
-      await updateTherapistStatus(booking.therapist_id, 'available');
-      
-      // Remove from queue
-      await removeFromQueue(id);
-
-      console.log(`✅ Firestore updated: Therapist ${booking.therapist_id} set to available, removed from queue`);
-    } catch (firestoreError) {
-      console.error('⚠️ Firestore sync failed:', firestoreError);
-    }
-
-    res.json({ message: 'Booking finished', booking });
-  } catch (error) {
-    console.error('Error finishing booking:', error);
-    res.status(500).json({ error: 'Failed to finish booking' });
-  }
-};
-
-// Start booking (Receptionist klik "Mulai")
-exports.startBooking = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const booking = await Booking.findByPk(id, {
-      include: [
-        { model: User, attributes: ['id', 'name'] },
-        { model: Therapist, attributes: ['id', 'name'] },
-        { model: Service, attributes: ['id', 'name'] },
-        { model: Room, attributes: ['id', 'room_number'] }
-      ]
-    });
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (booking.status !== 'Pending') {
-      return res.status(400).json({ error: 'Booking already started or completed' });
-    }
-
-    // Update status to In_Progress
-    await booking.update({ status: 'In_Progress' });
-
-    // Update Firestore: set therapist as busy and add to queue
-    try {
-      await updateTherapistStatus(booking.therapist_id, 'busy');
-      
-      await addToQueue({
-        booking_id: booking.id,
-        therapist_id: booking.therapist_id,
-        therapist_name: booking.Therapist.name,
-        user_name: booking.User.name,
-        service_name: booking.Service.name,
-        room_number: booking.Room.room_number,
-        status: 'In Progress',
-        created_at: new Date().toISOString()
-      });
-
-      console.log(`✅ Booking ${id} started: Therapist ${booking.therapist_id} is now busy`);
-    } catch (firestoreError) {
-      console.error('⚠️ Firestore sync failed:', firestoreError);
-    }
-
-    res.json({ message: 'Booking started successfully', booking });
-  } catch (error) {
-    console.error('Error starting booking:', error);
-    res.status(500).json({ error: 'Failed to start booking' });
-  }
-};
-
-// Get today's bookings (untuk receptionist)
+// Get today's bookings
 exports.getTodayBookings = async (req, res) => {
   try {
     const { Sequelize } = require('sequelize');
@@ -175,7 +83,6 @@ exports.getTodayBookings = async (req, res) => {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -197,87 +104,70 @@ exports.getTodayBookings = async (req, res) => {
 
     res.json(bookings);
   } catch (error) {
-    console.error('Error fetching today bookings:', error);
+    console.error('Error:', error);
     res.status(500).json({ error: 'Failed to fetch today bookings' });
   }
 };
 
-// Get active queue from Firestore
+// Start booking
+exports.startBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findByPk(id, {
+      include: [User, Therapist, Service, Room]
+    });
+
+    if (!booking || booking.status !== 'Pending') {
+      return res.status(400).json({ error: 'Invalid booking' });
+    }
+
+    await booking.update({ status: 'In_Progress' });
+    await updateTherapistStatus(booking.therapist_id, 'busy');
+    await addToQueue({
+      booking_id: booking.id,
+      therapist_name: booking.Therapist.name,
+      user_name: booking.User.name,
+      service_name: booking.Service.name,
+      room_number: booking.Room.room_number,
+      status: 'In_Progress'
+    });
+
+    res.json({ message: 'Booking started', booking });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to start booking' });
+  }
+};
+
+// Finish booking
+exports.finishBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findByPk(id);
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    await booking.update({ status: 'Done' });
+    await updateTherapistStatus(booking.therapist_id, 'available');
+    await removeFromQueue(booking.id);
+
+    res.json({ message: 'Booking finished', booking });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to finish booking' });
+  }
+};
+
+// Get queue
 exports.getQueue = async (req, res) => {
   try {
     const { getActiveQueue } = require('../services/firestoreService');
     const queue = await getActiveQueue();
     res.json({ live_queue: queue });
   } catch (error) {
-    console.error('Error getting queue:', error);
-    res.status(500).json({ error: 'Failed to get queue', live_queue: [] });
-  }
-};
-
-// Get booking by ID
-exports.getBookingById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const booking = await Booking.findByPk(id, {
-      include: [
-        { model: User, attributes: ['id', 'name', 'email'] },
-        { model: Therapist, attributes: ['id', 'name', 'specialization'] },
-        { model: Service, attributes: ['id', 'name', 'duration_minutes', 'price'] },
-        { model: Room, attributes: ['id', 'room_number', 'type'] }
-      ]
-    });
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    res.json(booking);
-  } catch (error) {
-    console.error('Error getting booking:', error);
-    res.status(500).json({ error: 'Failed to get booking' });
-  }
-};
-
-// Update booking
-exports.updateBooking = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const booking = await Booking.findByPk(id);
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    await booking.update(req.body);
-    res.json(booking);
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    res.status(500).json({ error: 'Failed to update booking' });
-  }
-};
-
-// Delete booking
-exports.deleteBooking = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const booking = await Booking.findByPk(id);
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    // Remove from Firestore queue before deleting
-    try {
-      await removeFromQueue(id);
-      await updateTherapistStatus(booking.therapist_id, 'available');
-    } catch (firestoreError) {
-      console.error('⚠️ Firestore cleanup failed:', firestoreError);
-    }
-
-    await booking.destroy();
-    res.json({ message: 'Booking deleted' });
-  } catch (error) {
-    console.error('Error deleting booking:', error);
-    res.status(500).json({ error: 'Failed to delete booking' });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to fetch queue' });
   }
 };
