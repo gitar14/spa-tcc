@@ -111,6 +111,93 @@ exports.finishBooking = async (req, res) => {
   }
 };
 
+// Start booking (Receptionist klik "Mulai")
+exports.startBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const booking = await Booking.findByPk(id, {
+      include: [
+        { model: User, attributes: ['id', 'name'] },
+        { model: Therapist, attributes: ['id', 'name'] },
+        { model: Service, attributes: ['id', 'name'] },
+        { model: Room, attributes: ['id', 'room_number'] }
+      ]
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    if (booking.status !== 'Pending') {
+      return res.status(400).json({ error: 'Booking already started or completed' });
+    }
+
+    // Update status to In_Progress
+    await booking.update({ status: 'In_Progress' });
+
+    // Update Firestore: set therapist as busy and add to queue
+    try {
+      await updateTherapistStatus(booking.therapist_id, 'busy');
+      
+      await addToQueue({
+        booking_id: booking.id,
+        therapist_id: booking.therapist_id,
+        therapist_name: booking.Therapist.name,
+        user_name: booking.User.name,
+        service_name: booking.Service.name,
+        room_number: booking.Room.room_number,
+        status: 'In Progress',
+        created_at: new Date().toISOString()
+      });
+
+      console.log(`✅ Booking ${id} started: Therapist ${booking.therapist_id} is now busy`);
+    } catch (firestoreError) {
+      console.error('⚠️ Firestore sync failed:', firestoreError);
+    }
+
+    res.json({ message: 'Booking started successfully', booking });
+  } catch (error) {
+    console.error('Error starting booking:', error);
+    res.status(500).json({ error: 'Failed to start booking' });
+  }
+};
+
+// Get today's bookings (untuk receptionist)
+exports.getTodayBookings = async (req, res) => {
+  try {
+    const { Sequelize } = require('sequelize');
+    const Op = Sequelize.Op;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const bookings = await Booking.findAll({
+      where: {
+        booking_time: {
+          [Op.gte]: today,
+          [Op.lt]: tomorrow
+        }
+      },
+      include: [
+        { model: User, attributes: ['id', 'name'] },
+        { model: Therapist, attributes: ['id', 'name'] },
+        { model: Service, attributes: ['id', 'name', 'duration_minutes', 'price'] },
+        { model: Room, attributes: ['id', 'room_number', 'type'] }
+      ],
+      order: [['booking_time', 'ASC']]
+    });
+
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error fetching today bookings:', error);
+    res.status(500).json({ error: 'Failed to fetch today bookings' });
+  }
+};
+
 // Get active queue from Firestore
 exports.getQueue = async (req, res) => {
   try {

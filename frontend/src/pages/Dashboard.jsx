@@ -9,7 +9,9 @@ import {
   Scissors,
   Sparkles,
   Star,
-  UserRoundCheck
+  UserRoundCheck,
+  Play,
+  CheckCheck
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -34,6 +36,24 @@ const formatRupiah = (value) => {
   }).format(number);
 };
 
+const formatTime = (datetime) => {
+  const date = new Date(datetime);
+  return date.toLocaleTimeString('id-ID', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
+const formatDate = (datetime) => {
+  const date = new Date(datetime);
+  return date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
 export default function Dashboard() {
   const [bookings, setBookings] = useState([]);
   const [queue, setQueue] = useState([]);
@@ -41,6 +61,7 @@ export default function Dashboard() {
   const [therapists, setTherapists] = useState(defaultTherapists);
   const [rooms, setRooms] = useState([]);
   const [message, setMessage] = useState('Siap menerima booking hari ini.');
+  const [todayBookings, setTodayBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     user_id: '1',
@@ -58,6 +79,15 @@ export default function Dashboard() {
     [form.service_id, services]
   );
 
+  const fetchTodayBookings = async () => {
+    try {
+      const response = await api.get('/bookings/today');
+      setTodayBookings(response.data);
+    } catch (error) {
+      console.error('Error fetching today bookings:', error);
+    }
+  };
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -74,6 +104,10 @@ export default function Dashboard() {
       if (serviceRes.data.length > 0) setServices(serviceRes.data);
       if (therapistRes.data.length > 0) setTherapists(therapistRes.data);
       setRooms(roomRes.data);
+      
+      // Fetch today bookings
+      await fetchTodayBookings();
+      
       setMessage('Data SQL dan Redis berhasil diperbarui.');
     } catch (error) {
       setMessage('Mode demo aktif. Isi master data atau nyalakan backend untuk data live.');
@@ -84,7 +118,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    const interval = window.setInterval(loadDashboardData, 15000);
+    const interval = window.setInterval(() => {
+      loadDashboardData();
+    }, 15000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -105,20 +141,36 @@ export default function Dashboard() {
         room_id: Number(form.room_id),
         booking_time: new Date(form.booking_time).toISOString()
       });
-      setMessage('Booking berhasil dibuat. Status terapis dikunci di Redis.');
+      setMessage('✅ Booking berhasil dibuat. Status terapis dikunci di Firestore.');
       await loadDashboardData();
     } catch (error) {
-      setMessage(error.response?.data?.error || 'Booking gagal diproses.');
+      setMessage('❌ ' + (error.response?.data?.error || 'Booking gagal diproses.'));
     }
   };
 
-  const finishBooking = async (id) => {
+  const handleStartBooking = async (bookingId) => {
     try {
-      await api.put(`/bookings/${id}/finish`);
-      setMessage(`Booking #${id} selesai. Terapis kembali tersedia.`);
+      await api.put(`/bookings/${bookingId}/start`);
+      setMessage(`✅ Booking #${bookingId} dimulai! Terapis sedang melayani customer.`);
       await loadDashboardData();
+      
+      setTimeout(() => setMessage('Siap menerima booking hari ini.'), 3000);
     } catch (error) {
-      setMessage(error.response?.data?.error || 'Gagal menyelesaikan booking.');
+      console.error('Error starting booking:', error);
+      setMessage('❌ Gagal memulai booking: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleFinishBooking = async (bookingId) => {
+    try {
+      await api.put(`/bookings/${bookingId}/finish`);
+      setMessage(`✅ Booking #${bookingId} selesai! Terapis kini available untuk booking berikutnya.`);
+      await loadDashboardData();
+      
+      setTimeout(() => setMessage('Siap menerima booking hari ini.'), 3000);
+    } catch (error) {
+      console.error('Error finishing booking:', error);
+      setMessage('❌ Gagal menyelesaikan booking: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -135,7 +187,7 @@ export default function Dashboard() {
               Receptionist Operations Hub
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Jadwal ruangan dari SQL, antrean terapis dari Redis, dan form booking pelanggan dalam satu layar kerja.
+              Jadwal ruangan dari SQL, antrean terapis dari Firestore, dan form booking pelanggan dalam satu layar kerja.
             </p>
           </div>
           <button
@@ -151,7 +203,7 @@ export default function Dashboard() {
 
       <section className="mx-auto grid max-w-7xl gap-4 px-5 py-5 md:grid-cols-4">
         <Metric icon={<CalendarDays size={20} />} label="Booking SQL" value={bookings.length} tone="teal" />
-        <Metric icon={<Clock3 size={20} />} label="Antrean Redis" value={queue.length} tone="rose" />
+        <Metric icon={<Clock3 size={20} />} label="Antrean Firestore" value={queue.length} tone="rose" />
         <Metric icon={<UserRoundCheck size={20} />} label="Sesi Aktif" value={activeCount} tone="amber" />
         <Metric icon={<CircleDollarSign size={20} />} label="Estimasi Revenue" value={formatRupiah(paidEstimate)} tone="slate" />
       </section>
@@ -213,8 +265,9 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-5">
+          {/* Live Queue Firestore */}
           <div className="grid gap-5 xl:grid-cols-2">
-            <Panel title="Live Queue Redis" icon={<Clock3 size={20} className="text-rose-700" />}>
+            <Panel title="Live Queue Firestore" icon={<Clock3 size={20} className="text-rose-700" />}>
               {queue.length === 0 ? (
                 <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">
                   Tidak ada antrean aktif. Terapis siap menerima pelanggan berikutnya.
@@ -222,10 +275,10 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-2">
                   {queue.map((item, index) => (
-  <div key={`${item?.id || index}`} className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
-    {typeof item === 'object' ? `Booking #${item.id} - ${item.message || 'Processing'}` : item}
-  </div>
-))}
+                    <div key={`${item?.id || index}`} className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
+                      {typeof item === 'object' ? `Booking #${item.id} - ${item.message || 'Processing'}` : item}
+                    </div>
+                  ))}
                 </div>
               )}
             </Panel>
@@ -245,7 +298,86 @@ export default function Dashboard() {
             </Panel>
           </div>
 
-          <Panel title="Jadwal Ruangan Spa SQL" icon={<CalendarDays size={20} className="text-slate-700" />}>
+          {/* Jadwal Booking Hari Ini - NEW SECTION */}
+          <Panel title="Jadwal Booking Hari Ini" icon={<CalendarDays size={20} className="text-teal-700" />}>
+            {todayBookings.length === 0 ? (
+              <p className="rounded-md bg-slate-50 p-4 text-center text-sm text-slate-500">
+                Belum ada booking untuk hari ini.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+                      <th className="p-3">ID</th>
+                      <th className="p-3">Waktu</th>
+                      <th className="p-3">Customer</th>
+                      <th className="p-3">Terapis</th>
+                      <th className="p-3">Layanan</th>
+                      <th className="p-3">Ruangan</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {todayBookings.map((booking) => (
+                      <tr key={booking.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-black text-teal-700">#{booking.id}</td>
+                        <td className="p-3 text-xs text-slate-700">{formatTime(booking.booking_time)}</td>
+                        <td className="p-3">{booking.User?.name || 'N/A'}</td>
+                        <td className="p-3">{booking.Therapist?.name || 'N/A'}</td>
+                        <td className="p-3 text-xs text-slate-600">{booking.Service?.name || 'N/A'}</td>
+                        <td className="p-3 font-semibold">{booking.Room?.room_number || 'N/A'}</td>
+                        <td className="p-3">
+                          {booking.status === 'Pending' && (
+                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-black text-yellow-800">
+                              ⏳ Menunggu
+                            </span>
+                          )}
+                          {booking.status === 'In_Progress' && (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-black text-green-800">
+                              🟢 Proses
+                            </span>
+                          )}
+                          {booking.status === 'Done' && (
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-black text-blue-800">
+                              ✅ Selesai
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {booking.status === 'Pending' && (
+                            <button
+                              onClick={() => handleStartBooking(booking.id)}
+                              className="inline-flex h-9 items-center gap-2 rounded-md bg-teal-600 px-3 text-xs font-bold text-white hover:bg-teal-700"
+                            >
+                              <Play size={14} />
+                              Mulai
+                            </button>
+                          )}
+                          {booking.status === 'In_Progress' && (
+                            <button
+                              onClick={() => handleFinishBooking(booking.id)}
+                              className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700"
+                            >
+                              <CheckCheck size={14} />
+                              Selesai
+                            </button>
+                          )}
+                          {booking.status === 'Done' && (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
+          {/* Jadwal Ruangan Spa SQL - All Bookings */}
+          <Panel title="Semua Booking (SQL)" icon={<CalendarDays size={20} className="text-slate-700" />}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                 <thead>
@@ -280,7 +412,7 @@ export default function Dashboard() {
                         <td className="p-3">
                           <button
                             type="button"
-                            onClick={() => finishBooking(booking.id)}
+                            onClick={() => handleFinishBooking(booking.id)}
                             className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-bold hover:bg-slate-100"
                           >
                             <Star size={14} />
@@ -297,7 +429,7 @@ export default function Dashboard() {
 
           <Panel title="Inventori Ruangan" icon={<Sparkles size={20} className="text-amber-600" />}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {(rooms.length > 0 ? rooms : [{ id: 1, room_number: 'A-01', type: 'Spa' }, { id: 2, room_number: 'B-02', type: 'Salon' }]).map((room) => (
+              {(rooms.length > 0 ? rooms : [{ id: 1, room_number: 'A-01', type: 'Spa' }, { id: 2, room_number: 'B-02', type: 'Salon' }, { id: 3, room_number: 'C-03', type: 'Facial' }]).map((room) => (
                 <div key={room.id} className="rounded-md border border-slate-200 p-3">
                   <p className="text-xs font-bold uppercase text-slate-500">Room {room.id}</p>
                   <p className="text-lg font-black text-slate-950">{room.room_number}</p>
