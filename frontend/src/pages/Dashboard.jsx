@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [services, setServices] = useState(defaultServices);
   const [therapists, setTherapists] = useState(defaultTherapists);
   const [rooms, setRooms] = useState([]);
+  const [users, setUsers] = useState([]);
   const [message, setMessage] = useState('Siap menerima booking hari ini.');
   const [todayBookings, setTodayBookings] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -91,12 +92,13 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [bookingRes, queueRes, serviceRes, therapistRes, roomRes] = await Promise.all([
+      const [bookingRes, queueRes, serviceRes, therapistRes, roomRes, userRes] = await Promise.all([
         api.get('/bookings'),
         api.get('/bookings/queue'),
         api.get('/services'),
         api.get('/therapists'),
-        api.get('/rooms')
+        api.get('/rooms'),
+        api.get('/users')
       ]);
 
       setBookings(bookingRes.data);
@@ -104,6 +106,7 @@ export default function Dashboard() {
       if (serviceRes.data.length > 0) setServices(serviceRes.data);
       if (therapistRes.data.length > 0) setTherapists(therapistRes.data);
       setRooms(roomRes.data);
+      setUsers(userRes.data);
       
       await fetchTodayBookings();
       
@@ -215,7 +218,20 @@ export default function Dashboard() {
               <h2 className="text-lg font-black text-slate-950">Booking Pelanggan</h2>
             </div>
             <form onSubmit={submitBooking} className="space-y-3">
-              <Field label="ID Pelanggan" name="user_id" type="number" value={form.user_id} onChange={updateForm} />
+              <SelectField label="Nama Pelanggan" name="user_id" value={form.user_id} onChange={updateForm}>
+                {users.length > 0 ? (
+                  users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} - {user.role}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="1">Alya Customer</option>
+                    <option value="2">Rani Receptionist</option>
+                  </>
+                )}
+              </SelectField>
               <SelectField label="Terapis Favorit" name="therapist_id" value={form.therapist_id} onChange={updateForm}>
                 {therapists.map((therapist) => (
                   <option key={therapist.id} value={therapist.id}>
@@ -230,7 +246,21 @@ export default function Dashboard() {
                   </option>
                 ))}
               </SelectField>
-              <Field label="ID Ruangan" name="room_id" type="number" value={form.room_id} onChange={updateForm} />
+              <SelectField label="Ruangan" name="room_id" value={form.room_id} onChange={updateForm}>
+                {rooms.length > 0 ? (
+                  rooms.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.room_number} - {room.type}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="1">A-01 - Spa</option>
+                    <option value="2">B-02 - Salon</option>
+                    <option value="3">C-03 - Facial</option>
+                  </>
+                )}
+              </SelectField>
               <Field label="Jam Booking" name="booking_time" type="datetime-local" value={form.booking_time} onChange={updateForm} />
               <button className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-700 text-sm font-black text-white hover:bg-teal-800">
                 <CheckCircle2 size={18} />
