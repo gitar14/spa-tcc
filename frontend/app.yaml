@@ -11,5 +11,4 @@ handlers:
     secure: always
 
 env_variables:
-  VITE_API_URL: "https://spa-backend-GANTI_NANTI.a.run.app/api"
-
+  VITE_API_URL: "https://spa-backend-344007205547.us-central1.run.app/api"
