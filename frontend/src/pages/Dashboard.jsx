@@ -222,10 +222,10 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-2">
                   {queue.map((item, index) => (
-                    <div key={`${item}-${index}`} className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
-                      {item}
-                    </div>
-                  ))}
+  <div key={`${item?.id || index}`} className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
+    {typeof item === 'object' ? `Booking #${item.id} - ${item.message || 'Processing'}` : item}
+  </div>
+))}
                 </div>
               )}
             </Panel>
