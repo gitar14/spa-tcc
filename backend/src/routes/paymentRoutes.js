@@ -34,6 +34,9 @@ const upload = multer({
   }
 });
 
+// Get payment proof
+router.get('/:bookingId/proof', paymentController.getPaymentProof);
+
 // Upload payment proof
 router.post('/:bookingId/proof', upload.single('payment_proof'), paymentController.uploadPaymentProof);
 

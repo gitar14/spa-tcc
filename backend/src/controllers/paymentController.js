@@ -81,3 +81,24 @@ exports.uploadPaymentProof = async (req, res) => {
     res.status(500).json({ error: 'Failed to upload payment proof' });
   }
 };
+
+// Get payment proof by booking ID
+exports.getPaymentProof = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const payment = await Payment.findOne({
+      where: { booking_id: bookingId }
+    });
+    if (!payment || !payment.payment_proof_url) {
+      return res.status(404).json({ error: 'Bukti bayar tidak ditemukan' });
+    }
+    res.json({
+      booking_id: bookingId,
+      payment_proof_url: payment.payment_proof_url,
+      status: payment.status
+    });
+  } catch (error) {
+    console.error('Error getting payment proof:', error);
+    res.status(500).json({ error: 'Failed to get payment proof' });
+  }
+};
