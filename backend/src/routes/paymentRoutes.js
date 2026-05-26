@@ -11,11 +11,25 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
+    // Allow common image mimetypes
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png', 
+      'image/jpg',
+      'image/webp',
+      'application/octet-stream' // For mobile uploads that don't set mimetype
+    ];
+    
+    // Also check filename extension as fallback
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+    const hasValidExt = allowedExts.some(ext => 
+      file.originalname.toLowerCase().endsWith(ext)
+    );
+    
+    if (allowedTypes.includes(file.mimetype) || hasValidExt) {
       cb(null, true);
     } else {
-      cb(new Error('Only JPEG, JPG, and PNG images are allowed'));
+      cb(new Error('Only JPEG, JPG, PNG, and WebP images are allowed'));
     }
   }
 });
@@ -24,3 +38,4 @@ const upload = multer({
 router.post('/:bookingId/proof', upload.single('payment_proof'), paymentController.uploadPaymentProof);
 
 module.exports = router;
+
