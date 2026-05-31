@@ -6,8 +6,8 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD || 'SpaSecure2024!',
   {
     host: process.env.DB_HOST || '136.111.178.140',
-    port: process.env.DB_PORT || 3306,  // ← MYSQL PORT!
-    dialect: 'mysql',  // ← MYSQL!
+    port: process.env.DB_PORT || 5432,  // ← POSTGRESQL PORT!
+    dialect: 'postgres',  // ← POSTGRESQL!
     logging: false
   }
 );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
 import '../models/booking.dart';
@@ -84,6 +85,43 @@ class ApiService {
     }
   }
 
+  // Create booking with customer details (NEW - for mobile app)
+  Future<Map<String, dynamic>> createBookingWithDetails({
+    required String name,
+    required String phone,
+    required int therapistId,
+    required int serviceId,
+    required int roomId,
+    required DateTime bookingTime,
+  }) async {
+    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/bookings');
+
+    try {
+      final response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'phone': phone,
+          'therapist_id': therapistId,
+          'service_id': serviceId,
+          'room_id': roomId,
+          'booking_time': bookingTime.toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(body['error'] ?? 'Booking gagal diproses');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
   // Get user's bookings
   Future<List<Booking>> getUserBookings(int userId) async {
     final client = _client ?? http.Client();
@@ -106,27 +144,38 @@ class ApiService {
   }
 
   // Upload payment proof
-  Future<String> uploadPaymentProof(int bookingId, File imageFile) async {
+  Future<void> uploadPaymentProof(int bookingId, File imageFile) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/payments/$bookingId/proof');
+    print('🔗 Upload URL: $uri');
+    print('📁 File path: ${imageFile.path}');
+    print('📁 File exists: ${imageFile.existsSync()}');
+    print('📁 File size: ${imageFile.lengthSync()} bytes');
 
-    var request = http.MultipartRequest('POST', uri);
+    final request = http.MultipartRequest('POST', uri);
+
+    // Explicitly set content type as image/jpeg
     request.files.add(
-      await http.MultipartFile.fromPath('payment_proof', imageFile.path),
+      http.MultipartFile.fromBytes(
+        'payment_proof',
+        await imageFile.readAsBytes(),
+        filename: 'payment_proof.jpg',
+        contentType: MediaType('image', 'jpeg'),
+      ),
     );
 
-    try {
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+    print('📡 Upload response status: ${response.statusCode}');
+    print('📡 Upload response body: ${response.body}');
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        throw Exception(body['error'] ?? 'Upload gagal');
+        throw Exception(body['error'] ?? 'Upload bukti bayar gagal');
+      } catch (e) {
+        throw Exception('Upload gagal: HTTP ${response.statusCode}');
       }
-
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      return json['payment_proof_url'] as String;
-    } catch (error) {
-      throw Exception('Upload error: $error');
     }
   }
 
@@ -140,8 +189,8 @@ class ApiService {
         throw Exception('HTTP ${response.statusCode}');
       }
 
-      final json = jsonDecode(response.body) as List<dynamic>;
-      return json.cast<Map<String, dynamic>>();
+      final json = jsonDecode(response.body);
+      return (json as List).cast<Map<String, dynamic>>();
     } finally {
       if (_client == null) client.close();
     }
