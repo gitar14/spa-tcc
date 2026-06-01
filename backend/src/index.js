@@ -1,10 +1,11 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 require('./config/firestore');
 require('./config/storage');
 require('./schema');
-require('dotenv').config();
 
 const apiRoutes = require('./routes');
 
@@ -17,13 +18,25 @@ app.use('/api', apiRoutes);
 
 const startServer = async () => {
   try {
+    console.log("STEP 1");
+
     await sequelize.authenticate();
+    console.log("AUTH SUCCESS");
+
+    console.log("STEP 2");
+
     await sequelize.sync();
+    console.log("SYNC SUCCESS");
+
+    console.log("STEP 3");
+
     app.listen(PORT, () => {
       console.log(`Backend Spa aktif di port ${PORT}`);
     });
   } catch (error) {
-    console.error('Backend gagal aktif:', error.message);
+    console.error("FULL ERROR:");
+    console.error(error);
+    console.error(error.stack);
     process.exit(1);
   }
 };
