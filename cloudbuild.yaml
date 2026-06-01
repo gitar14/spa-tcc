@@ -6,12 +6,12 @@ steps:
       - '-t'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
       - '.'
-  
+
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
-  
+
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -19,8 +19,6 @@ steps:
       - 'deploy'
       - 'spa-backend'
       - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
-    options:
-    logging: CLOUD_LOGGING_ONLY
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -29,4 +27,3 @@ steps:
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/spa-repo/backend:$SHORT_SHA'
-
