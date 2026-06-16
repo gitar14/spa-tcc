@@ -338,7 +338,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<Therapist>(
-            value: _selectedTherapist,
+            initialValue: _selectedTherapist,
             decoration: const InputDecoration(
               labelText: 'Pilih Terapis',
               border: OutlineInputBorder(),
@@ -355,7 +355,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _selectedRoomType,
+            initialValue: _selectedRoomType,
             decoration: const InputDecoration(
               labelText: 'Jenis Ruangan',
               border: OutlineInputBorder(),

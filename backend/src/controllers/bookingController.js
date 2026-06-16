@@ -1,5 +1,6 @@
 const { Booking, User, Therapist, Service, Room } = require('../schema');
 const { updateTherapistStatus, addToQueue, removeFromQueue } = require('../services/firestoreService');
+const { Op } = require('sequelize'); // Ditambahkan untuk operator pencarian ganda (OR & IN)
 
 // Get all bookings
 exports.getAllBookings = async (req, res) => {
@@ -30,6 +31,30 @@ exports.createBooking = async (req, res) => {
     if (!name || !phone || !therapist_id || !service_id || !room_id || !booking_time) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // === TAMBAHAN LOGIKA PENGECEKAN DOUBLE-BOOKING ===
+    const existingBooking = await Booking.findOne({
+      where: {
+        booking_time: new Date(booking_time),
+        status: {
+          [Op.in]: ['Pending', 'In_Progress'] // Hanya mengecek jadwal yang aktif
+        },
+        [Op.or]: [
+          { therapist_id: therapist_id }, // Mengecek apakah terapis sudah dibooking
+          { room_id: room_id }            // Mengecek apakah ruangan sudah dibooking
+        ]
+      }
+    });
+
+    if (existingBooking) {
+      const isTherapistBusy = existingBooking.therapist_id == therapist_id;
+      const conflictReason = isTherapistBusy ? 'Terapis' : 'Ruangan';
+      return res.status(409).json({ 
+        error: 'Jadwal Bentrok', 
+        message: `${conflictReason} tersebut sudah di-booking dan masih dalam layanan pada jam tersebut.` 
+      });
+    }
+    // =================================================
 
     // Find or create user by phone
     let user = await User.findOne({ where: { phone } });
@@ -79,7 +104,7 @@ exports.createBooking = async (req, res) => {
 exports.getTodayBookings = async (req, res) => {
   try {
     const { Sequelize } = require('sequelize');
-    const Op = Sequelize.Op;
+    const OpLocal = Sequelize.Op; // Menggunakan alias agar tidak bentrok dengan Op di atas
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -89,8 +114,8 @@ exports.getTodayBookings = async (req, res) => {
     const bookings = await Booking.findAll({
       where: {
         booking_time: {
-          [Op.gte]: today,
-          [Op.lt]: tomorrow
+          [OpLocal.gte]: today,
+          [OpLocal.lt]: tomorrow
         }
       },
       include: [
