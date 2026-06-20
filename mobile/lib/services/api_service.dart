@@ -38,6 +38,135 @@ class ApiService {
     return json.map(User.fromJson).toList();
   }
 
+  // Login dengan email & password
+  Future<User> login({
+    required String email,
+    required String password,
+  }) async {
+    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/login');
+
+    try {
+      final response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          body['error'] ?? body['message'] ?? 'Email atau password salah',
+        );
+      }
+
+      final userJson = (body['user'] ?? body) as Map<String, dynamic>;
+      return User.fromJson(userJson);
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
+  // Registrasi akun baru
+  Future<User> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/register');
+
+    try {
+      final response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          body['error'] ?? body['message'] ?? 'Registrasi gagal diproses',
+        );
+      }
+
+      final userJson = (body['user'] ?? body) as Map<String, dynamic>;
+      return User.fromJson(userJson);
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
+  // Ganti email user
+  Future<User> updateEmail({
+    required int userId,
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/users/$userId/email');
+
+    try {
+      final response = await client.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': newEmail,
+          'password': currentPassword,
+        }),
+      );
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          body['error'] ?? body['message'] ?? 'Gagal mengubah email',
+        );
+      }
+
+      final userJson = (body['user'] ?? body) as Map<String, dynamic>;
+      return User.fromJson(userJson);
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
+  // Ganti password user
+  Future<void> updatePassword({
+    required int userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/users/$userId/password');
+
+    try {
+      final response = await client.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(
+          body['error'] ?? body['message'] ?? 'Gagal mengubah password',
+        );
+      }
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
   Future<List<SpaService>> getServices() async {
     final json = await _getList('/services');
     return json.map(SpaService.fromJson).toList();
@@ -85,7 +214,7 @@ class ApiService {
     }
   }
 
-  // Create booking with customer details (NEW - for mobile app)
+  // Create booking with customer details
   Future<Map<String, dynamic>> createBookingWithDetails({
     required String name,
     required String phone,
@@ -146,14 +275,9 @@ class ApiService {
   // Upload payment proof
   Future<void> uploadPaymentProof(int bookingId, File imageFile) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/payments/$bookingId/proof');
-    print('🔗 Upload URL: $uri');
-    print('📁 File path: ${imageFile.path}');
-    print('📁 File exists: ${imageFile.existsSync()}');
-    print('📁 File size: ${imageFile.lengthSync()} bytes');
 
     final request = http.MultipartRequest('POST', uri);
 
-    // Explicitly set content type as image/jpeg
     request.files.add(
       http.MultipartFile.fromBytes(
         'payment_proof',
@@ -165,9 +289,6 @@ class ApiService {
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-
-    print('📡 Upload response status: ${response.statusCode}');
-    print('📡 Upload response body: ${response.body}');
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       try {

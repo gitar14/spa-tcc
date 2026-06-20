@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/browse_screen.dart';
-import 'screens/my_bookings_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_screen.dart';
+import 'services/auth_storage.dart';
 
 void main() {
   runApp(const SpaMobileApp());
@@ -18,50 +19,49 @@ class SpaMobileApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: const SplashRouter(),
     );
   }
 }
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+/// Widget yang mengecek sesi tersimpan sebelum menentukan halaman awal.
+/// - Jika ada data user di local storage → langsung ke MainScreen (auto-login)
+/// - Jika tidak ada → ke LoginScreen seperti biasa
+class SplashRouter extends StatefulWidget {
+  const SplashRouter({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<SplashRouter> createState() => _SplashRouterState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+class _SplashRouterState extends State<SplashRouter> {
+  @override
+  void initState() {
+    super.initState();
+    _checkSession();
+  }
 
-  final List<Widget> _screens = const [
-    BrowseScreen(),
-    MyBookingsScreen(),
-  ];
+  Future<void> _checkSession() async {
+    final user = await AuthStorage.loadUser();
+
+    if (!mounted) return;
+
+    if (user != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => MainScreen(user: user)),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.spa_outlined),
-            selectedIcon: Icon(Icons.spa),
-            label: 'Browse',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
-            label: 'My Bookings',
-          ),
-        ],
-      ),
+    // Tampilkan splash sederhana sambil mengecek sesi
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

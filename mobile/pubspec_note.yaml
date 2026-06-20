@@ -1,0 +1,8 @@
+# Tambahkan baris ini di bagian dependencies pada pubspec.yaml kamu:
+#
+# dependencies:
+#   flutter:
+#     sdk: flutter
+#   http: ...
+#   http_parser: ...
+#   shared_preferences: ^2.3.2   # <-- tambahkan ini

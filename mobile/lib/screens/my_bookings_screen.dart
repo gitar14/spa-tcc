@@ -4,7 +4,9 @@ import '../services/api_service.dart';
 import 'booking_detail_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
-  const MyBookingsScreen({super.key});
+  const MyBookingsScreen({super.key, required this.userId});
+
+  final int userId;
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -15,9 +17,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List<Booking> _bookings = [];
   bool _loading = true;
   String _errorMessage = '';
-
-  // Hardcoded user ID (dalam production, ambil dari auth/session)
-  final int _userId = 1; // Alya Customer
 
   @override
   void initState() {
@@ -32,7 +31,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     });
 
     try {
-      final bookings = await _apiService.getUserBookings(_userId);
+      final bookings = await _apiService.getUserBookings(widget.userId);
       setState(() {
         _bookings = bookings;
         _loading = false;

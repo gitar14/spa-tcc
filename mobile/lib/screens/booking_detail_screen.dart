@@ -209,11 +209,11 @@ class BookingDetailScreen extends StatelessWidget {
                         color: Colors.orange[50],
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.warning, color: Colors.orange),
-                          SizedBox(width: 12),
-                          Expanded(
+                          const Icon(Icons.warning, color: Colors.orange),
+                          const SizedBox(width: 12),
+                          const Expanded(
                             child: Text(
                               'Bukti pembayaran belum diupload saat booking',
                               style: TextStyle(fontSize: 14),
